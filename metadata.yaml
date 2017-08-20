@@ -1,0 +1,6 @@
+name: layer-storpool-helper
+summary: Some helper functions for the StorPool charm layers
+maintainer: StorPool <support@storpool.com>
+description: |
+  This layer carries some Python modules with helper functions used by
+  the other StorPool charm layers.
