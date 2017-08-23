@@ -233,12 +233,23 @@ def unrecord_packages(layer_name, charm_name = None):
 		removed = set()
 		while True:
 			removed_now = set()
+
+			# Sigh... don't we just love special cases...
+			pkgs = set(['libwww-perl', 'liblwp-protocol-https-perl'])
+			if pkgs.issubset(try_remove):
+				if subprocess.call(['dpkg', '-r', '--dry-run', '--'] + list(pkgs), stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0:
+					subprocess.call(['dpkg', '--purge', '--'] + list(pkgs))
+					removed_now = removed_now.union(pkgs)
+					changed = True
+
+			# Now go for them all
 			for pkg in try_remove:
 				if subprocess.call(['dpkg', '-r', '--dry-run', '--', pkg], stdout=subprocess.PIPE, stderr=subprocess.PIPE) != 0:
 					continue
 				subprocess.call(['dpkg', '--purge', '--', pkg])
 				removed_now.add(pkg)
 				changed = True
+
 			if removed_now:
 				removed = removed.union(removed_now)
 				try_remove = try_remove.difference(removed_now)
