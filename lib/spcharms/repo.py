@@ -1,3 +1,5 @@
+import fcntl
+import json
 import os
 import re
 import subprocess
@@ -126,48 +128,129 @@ def pkg_record_file():
 def charm_install_flag_dir():
 	return '/var/lib/storpool/install-charms'
 
-def charm_install_flag_file():
-	return charm_install_flag_dir() + '/' + hookenv.charm_name()
-
 def charm_install_list_file():
-	return '/var/lib/storpool/install-charms.txt'
+	return '/var/lib/storpool/install-charms.json'
 
-def record_packages(names):
+# The part of the data structure that we care about:
+# {
+#   'charms': {
+#     '<charm_name>': {
+#       'layers': {
+#         '<layer_name>': {
+#           'packages': ['p1', 'p2', ...]
+#         }
+#     }
+#   },
+#
+#   'packages': {
+#     'remove': ['p3', 'p4', ...]
+#   }
+# }
+
+def record_packages(layer_name, names, charm_name = None):
+	if charm_name is None:
+		charm_name = hookenv.charm_name()
+
 	if not os.path.isdir('/var/lib/storpool'):
 		os.mkdir('/var/lib/storpool', mode=0o700)
-	if not os.path.isdir('/var/lib/storpool/install-charms'):
-		os.mkdir('/var/lib/storpool/install-charms', mode=0o700)
-	with open(charm_install_flag_file(), mode='w') as flagf:
+	with open(charm_install_list_file(), mode='at') as af:
+		# Just making sure the file exists so we can open it as r+t.
 		pass
-	with open(charm_install_list_file(), mode='a') as listf:
-		print('\n'.join(names), file=listf)
+	with open(charm_install_list_file(), mode='r+t') as listf:
+		fcntl.lockf(listf, fcntl.LOCK_EX)
+		
+		# OK, we're ready to go now
+		contents = listf.read()
+		if len(contents) > 0:
+			data = json.loads(contents)
+		else:
+			data = {'charms': {}}
 
-def uninstall_recorded_packages():
-	try:
-		os.unlink(charm_install_flag_file())
-	except Exception as e:
-		pass
-	
-	if not os.path.isdir(charm_install_flag_dir()) or \
-	   not list(filter(
-		lambda e: e.is_file(),
-		os.scandir(charm_install_flag_dir())
-	   )):
-		if os.path.isfile(charm_install_list_file()):
-			with open(charm_install_list_file(), 'r') as listf:
-				names = sorted(set(list(filter(
-					lambda s: len(s) > 0,
-					map(
-						lambda d: d.rstrip(),
-						listf.readlines()
-					)
-				))))
-				if names:
-					cmd = ['apt-get', 'remove', '-y', '--']
-					cmd.extend(names)
-					subprocess.call(cmd)
+		if charm_name not in data['charms']:
+			data['charms'][charm_name] = {'layers': {}}
+		layers = data['charms'][charm_name]['layers']
 
-			os.remove(charm_install_list_file())
+		if layer_name not in layers:
+			layers[layer_name] = {'packages': []}
+		layer = layers[layer_name]
+
+		pset = set(layer['packages'])
+		cset = set.union(pset, set(names))
+		layer['packages'] = list(sorted(cset))
+
+		# Hm, any packages that no longer need to be uninstalled?
+		if 'packages' not in data:
+			data['packages'] = {'remove': []}
+		data['packages']['remove'] = list(sorted(set(data['packages']['remove']).difference(cset)))
+
+		# Right, so let's write it back
+		listf.seek(0)
+		print(json.dumps(data), file=listf)
+		listf.truncate()
+
+def unrecord_packages(layer_name, charm_name = None):
+	if charm_name is None:
+		charm_name = hookenv.charm_name()
+
+	# If we got here, the file must exist.... right?
+	with open(charm_install_list_file(), mode='r+t') as listf:
+		fcntl.lockf(listf, fcntl.LOCK_EX)
+		
+		# ...and it must contain valid JSON?
+		data = json.loads(listf.read())
+
+		packages = set()
+		has_layer = False
+		has_charm = charm_name in data['charms']
+		changed = False
+		if has_charm:
+			layers = data['charms'][charm_name]['layers']
+			has_layer = layer_name in layers
+			if has_layer:
+				layer = layers[layer_name]
+				packages = set(layer['packages'])
+				del layers[layer_name]
+				changed = True
+				if not layers:
+					del data['charms'][charm_name]
+
+		# Right, so let's write it back if needed
+		if changed:
+			listf.seek(0)
+			print(json.dumps(data), file=listf)
+			listf.truncate()
+
+		changed = False
+		if 'packages' not in data:
+			data['packages'] = {'remove': []}
+		try_remove = set(data['packages']['remove']).union(packages)
+		for cdata in data['charms'].values():
+			for layer in cdata['layers'].values():
+				try_remove = try_remove.difference(set(layer['packages']))
+		if try_remove != set(data['packages']['remove']):
+			changed = True
+
+		removed = set()
+		while True:
+			removed_now = set()
+			for pkg in try_remove:
+				if subprocess.call(['dpkg', '-r', '--dry-run', '--', pkg], stdout=subprocess.PIPE, stderr=subprocess.PIPE) != 0:
+					continue
+				subprocess.call(['dpkg', '--purge', '--', pkg])
+				removed_now.add(pkg)
+				changed = True
+			if removed_now:
+				removed = removed.union(removed_now)
+				try_remove = try_remove.difference(removed_now)
+			else:
+				break
+		data['packages']['remove'] = list(sorted(try_remove.difference(removed)))
+
+		# Let's write it back again if needed
+		if changed:
+			listf.seek(0)
+			print(json.dumps(data), file=listf)
+			listf.truncate()
 
 def list_package_files(name):
 	files_b = subprocess.check_output(['dpkg', '-L', '--', name])
