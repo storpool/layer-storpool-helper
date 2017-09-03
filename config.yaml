@@ -1,0 +1,5 @@
+options:
+  storpool_charm_log_file:
+    type: string
+    description: The full path to a file for logging additional diagnostics.
+    default: /dev/null
