@@ -39,7 +39,17 @@ class Txn(object):
 
 class LXD(object):
 	@classmethod
+	def handle_lxc(klass):
+		config = hookenv.config()
+		if config is None:
+			return False
+		handle_lxc = config.get('handle_lxc', False)
+		return handle_lxc if handle_lxc is not None else False
+
+	@classmethod
 	def list_all(klass):
+		if not klass.handle_lxc():
+			return []
 		lxc_b = subprocess.check_output(['lxc', 'list', '--format=json'])
 		lst = json.loads(lxc_b.decode())
 		return map(lambda c: c['name'], lst)
