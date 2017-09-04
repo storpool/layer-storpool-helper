@@ -1,9 +1,13 @@
+import platform
 import time
 
 from charmhelpers.core import hookenv
 
+rdebug_node = platform.node()
+
 def rdebug(s, prefix='storpool'):
-	data = '[{prefix}] {s}'.format(prefix=prefix, s=s)
+	global rdebug_node
+	data = '[[{hostname}:{prefix}]] {s}'.format(hostname=rdebug_node, prefix=prefix, s=s)
 	print(data)
 
 	config = hookenv.config()
