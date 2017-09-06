@@ -17,3 +17,11 @@ def rdebug(s, prefix='storpool'):
 		with open(fname, 'a') as f:
 			data_ts = '{tm} {data}'.format(tm=time.ctime(), data=data)
 			print(data_ts, file=f)
+
+def check_in_lxc():
+	try:
+		with open('/proc/1/environ', mode='r') as f:
+			contents = f.read()
+			return bool(list(filter(lambda s: s == 'container=lxc', contents.split('\x00'))))
+	except Exception as e:
+		return False
