@@ -192,76 +192,78 @@ def unrecord_packages(layer_name, charm_name = None):
 	if charm_name is None:
 		charm_name = hookenv.charm_name()
 
-	# If we got here, the file must exist.... right?
-	with open(charm_install_list_file(), mode='r+t') as listf:
-		fcntl.lockf(listf, fcntl.LOCK_EX)
+	try:
+		with open(charm_install_list_file(), mode='r+t') as listf:
+			fcntl.lockf(listf, fcntl.LOCK_EX)
 		
-		# ...and it must contain valid JSON?
-		data = json.loads(listf.read())
+			# ...and it must contain valid JSON?
+			data = json.loads(listf.read())
 
-		packages = set()
-		has_layer = False
-		has_charm = charm_name in data['charms']
-		changed = False
-		if has_charm:
-			layers = data['charms'][charm_name]['layers']
-			has_layer = layer_name in layers
-			if has_layer:
-				layer = layers[layer_name]
-				packages = set(layer['packages'])
-				del layers[layer_name]
+			packages = set()
+			has_layer = False
+			has_charm = charm_name in data['charms']
+			changed = False
+			if has_charm:
+				layers = data['charms'][charm_name]['layers']
+				has_layer = layer_name in layers
+				if has_layer:
+					layer = layers[layer_name]
+					packages = set(layer['packages'])
+					del layers[layer_name]
+					changed = True
+					if not layers:
+						del data['charms'][charm_name]
+
+			# Right, so let's write it back if needed
+			if changed:
+				listf.seek(0)
+				print(json.dumps(data), file=listf)
+				listf.truncate()
+
+			changed = False
+			if 'packages' not in data:
+				data['packages'] = {'remove': []}
+			try_remove = set(data['packages']['remove']).union(packages)
+			for cdata in data['charms'].values():
+				for layer in cdata['layers'].values():
+					try_remove = try_remove.difference(set(layer['packages']))
+			if try_remove != set(data['packages']['remove']):
 				changed = True
-				if not layers:
-					del data['charms'][charm_name]
 
-		# Right, so let's write it back if needed
-		if changed:
-			listf.seek(0)
-			print(json.dumps(data), file=listf)
-			listf.truncate()
+			removed = set()
+			while True:
+				removed_now = set()
 
-		changed = False
-		if 'packages' not in data:
-			data['packages'] = {'remove': []}
-		try_remove = set(data['packages']['remove']).union(packages)
-		for cdata in data['charms'].values():
-			for layer in cdata['layers'].values():
-				try_remove = try_remove.difference(set(layer['packages']))
-		if try_remove != set(data['packages']['remove']):
-			changed = True
+				# Sigh... don't we just love special cases...
+				pkgs = set(['libwww-perl', 'liblwp-protocol-https-perl'])
+				if pkgs.issubset(try_remove):
+					if subprocess.call(['dpkg', '-r', '--dry-run', '--'] + list(pkgs), stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0:
+						subprocess.call(['dpkg', '--purge', '--'] + list(pkgs))
+						removed_now = removed_now.union(pkgs)
+						changed = True
 
-		removed = set()
-		while True:
-			removed_now = set()
-
-			# Sigh... don't we just love special cases...
-			pkgs = set(['libwww-perl', 'liblwp-protocol-https-perl'])
-			if pkgs.issubset(try_remove):
-				if subprocess.call(['dpkg', '-r', '--dry-run', '--'] + list(pkgs), stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0:
-					subprocess.call(['dpkg', '--purge', '--'] + list(pkgs))
-					removed_now = removed_now.union(pkgs)
+				# Now go for them all
+				for pkg in try_remove:
+					if subprocess.call(['dpkg', '-r', '--dry-run', '--', pkg], stdout=subprocess.PIPE, stderr=subprocess.PIPE) != 0:
+						continue
+					subprocess.call(['dpkg', '--purge', '--', pkg])
+					removed_now.add(pkg)
 					changed = True
 
-			# Now go for them all
-			for pkg in try_remove:
-				if subprocess.call(['dpkg', '-r', '--dry-run', '--', pkg], stdout=subprocess.PIPE, stderr=subprocess.PIPE) != 0:
-					continue
-				subprocess.call(['dpkg', '--purge', '--', pkg])
-				removed_now.add(pkg)
-				changed = True
+				if removed_now:
+					removed = removed.union(removed_now)
+					try_remove = try_remove.difference(removed_now)
+				else:
+					break
+			data['packages']['remove'] = list(sorted(try_remove.difference(removed)))
 
-			if removed_now:
-				removed = removed.union(removed_now)
-				try_remove = try_remove.difference(removed_now)
-			else:
-				break
-		data['packages']['remove'] = list(sorted(try_remove.difference(removed)))
-
-		# Let's write it back again if needed
-		if changed:
-			listf.seek(0)
-			print(json.dumps(data), file=listf)
-			listf.truncate()
+			# Let's write it back again if needed
+			if changed:
+				listf.seek(0)
+				print(json.dumps(data), file=listf)
+				listf.truncate()
+	except FileNotFoundError:
+		pass
 
 def list_package_files(name):
 	files_b = subprocess.check_output(['dpkg', '-L', '--', name])
