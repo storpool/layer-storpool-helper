@@ -2,6 +2,7 @@ import subprocess
 
 cached_config = None
 
+
 def get_cached_dict():
     global cached_config
     if cached_config is not None:
@@ -17,8 +18,10 @@ def get_cached_dict():
     cached_config = res
     return cached_config
 
+
 def get_dict():
     return get_cached_dict()
+
 
 def drop_cache():
     global cached_config

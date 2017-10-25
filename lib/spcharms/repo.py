@@ -6,13 +6,16 @@ import subprocess
 
 from charmhelpers.core import hookenv
 
+
 class StorPoolRepoException(Exception):
     pass
+
 
 re_policy = {
     'installed': re.compile('\s* Installed: \s+ (?P<version> \S+ ) \s* $', re.X),
     'candidate': re.compile('\s* Candidate: \s+ (?P<version> \S+ ) \s* $', re.X),
 }
+
 
 def apt_pkg_policy(names):
     res = {}
@@ -46,6 +49,7 @@ def apt_pkg_policy(names):
 
     return res
 
+
 def pkgs_to_install(requested, policy):
     to_install = []
 
@@ -65,6 +69,7 @@ def pkgs_to_install(requested, policy):
         to_install.append(p)
 
     return (None, to_install)
+
 
 def apt_install(pkgs):
     previous_b = subprocess.check_output([
@@ -107,6 +112,7 @@ def apt_install(pkgs):
     ))
     return newly_installed
 
+
 def install_packages(requested):
     try:
         policy = apt_pkg_policy(requested.keys())
@@ -122,11 +128,14 @@ def install_packages(requested):
     except Exception as e:
         return ('Could not install the "{names}" packages: {e}'.format(names=sorted(to_install), e=e), None)
 
+
 def pkg_record_file():
     return '/var/lib/' + hookenv.charm_name() + '.packages'
 
+
 def charm_install_flag_dir():
     return '/var/lib/storpool/install-charms'
+
 
 def charm_install_list_file():
     return '/var/lib/storpool/install-charms.json'
@@ -146,6 +155,7 @@ def charm_install_list_file():
 #     'remove': ['p3', 'p4', ...]
 #   }
 # }
+
 
 def record_packages(layer_name, names, charm_name = None):
     if charm_name is None:
@@ -187,6 +197,7 @@ def record_packages(layer_name, names, charm_name = None):
         listf.seek(0)
         print(json.dumps(data), file=listf)
         listf.truncate()
+
 
 def unrecord_packages(layer_name, charm_name = None):
     if charm_name is None:
@@ -264,6 +275,7 @@ def unrecord_packages(layer_name, charm_name = None):
                 listf.truncate()
     except FileNotFoundError:
         pass
+
 
 def list_package_files(name):
     files_b = subprocess.check_output(['dpkg', '-L', '--', name])

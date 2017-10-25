@@ -6,8 +6,10 @@ from charmhelpers.core import hookenv
 
 from spcharms import repo as sprepo
 
+
 def module_name():
     return 'charm-' + hookenv.charm_name()
+
 
 def install(*args, exact=False, prefix=''):
     cmd = ['env', 'TXN_INSTALL_MODULE=' + module_name(), 'txn', 'install-exact' if exact else 'install']
@@ -15,12 +17,14 @@ def install(*args, exact=False, prefix=''):
     cmd[-1] = prefix + cmd[-1]
     subprocess.check_call(cmd)
 
+
 def list_modules():
     modules = subprocess.getoutput('txn list-modules')
     if modules is None:
         return []
     else:
         return modules.split('\n')
+
 
 def rollback_if_needed():
     if module_name() in list_modules():
@@ -36,6 +40,7 @@ class Txn(object):
     
     def install_exact(self, *args):
         self.install(*args, exact=True)
+
 
 class LXD(object):
     @classmethod

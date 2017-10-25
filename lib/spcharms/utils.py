@@ -5,6 +5,7 @@ from charmhelpers.core import hookenv
 
 rdebug_node = platform.node()
 
+
 def rdebug(s, prefix='storpool'):
     global rdebug_node
     data = '[[{hostname}:{prefix}]] {s}'.format(hostname=rdebug_node, prefix=prefix, s=s)
@@ -17,6 +18,7 @@ def rdebug(s, prefix='storpool'):
         with open(fname, 'a') as f:
             data_ts = '{tm} {data}'.format(tm=time.ctime(), data=data)
             print(data_ts, file=f)
+
 
 def check_in_lxc():
     try:
