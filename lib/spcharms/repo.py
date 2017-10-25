@@ -203,7 +203,7 @@ def charm_install_list_file():
 # }
 
 
-def record_packages(layer_name, names, charm_name = None):
+def record_packages(layer_name, names, charm_name=None):
     """
     Record the list of packages installed by the current unit's layer.
     """
@@ -217,7 +217,7 @@ def record_packages(layer_name, names, charm_name = None):
         pass
     with open(charm_install_list_file(), mode='r+t') as listf:
         fcntl.lockf(listf, fcntl.LOCK_EX)
-        
+
         # OK, we're ready to go now
         contents = listf.read()
         if len(contents) > 0:
@@ -249,7 +249,7 @@ def record_packages(layer_name, names, charm_name = None):
         listf.truncate()
 
 
-def unrecord_packages(layer_name, charm_name = None):
+def unrecord_packages(layer_name, charm_name=None):
     """
     Remove the packages installed by the specified unit's layer from
     the record.
@@ -261,7 +261,7 @@ def unrecord_packages(layer_name, charm_name = None):
     try:
         with open(charm_install_list_file(), mode='r+t') as listf:
             fcntl.lockf(listf, fcntl.LOCK_EX)
-        
+
             # ...and it must contain valid JSON?
             data = json.loads(listf.read())
 

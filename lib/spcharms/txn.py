@@ -58,13 +58,13 @@ class Txn(object):
         Initialize a Txn object with the specified directory tree prefix.
         """
         self.prefix = prefix
-    
+
     def install(self, *args, exact=False):
         """
         Install a single file within the tree.
         """
         install(*args, exact=exact, prefix=self.prefix)
-    
+
     def install_exact(self, *args):
         """
         Install a single file within the tree exactly as the destination one.
@@ -129,7 +129,10 @@ class LXD(object):
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output = p.communicate()[0].decode()
         res = p.returncode
-        return { 'res': res, 'out': output, }
+        return {
+                'res': res,
+                'out': output,
+               }
 
     def copy_packages(self, *pkgnames):
         """
