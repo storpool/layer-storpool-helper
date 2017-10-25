@@ -18,7 +18,7 @@ def rdebug(s, prefix='storpool'):
     data = '[[{hostname}:{prefix}]] {s}'.format(hostname=rdebug_node,
                                                 prefix=prefix,
                                                 s=s)
-    print(data)
+    hookenv.log(data, hookenv.DEBUG)
 
     config = hookenv.config()
     def_fname = '/dev/null'
