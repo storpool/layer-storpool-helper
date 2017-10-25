@@ -12,7 +12,8 @@ def module_name():
 
 
 def install(*args, exact=False, prefix=''):
-    cmd = ['env', 'TXN_INSTALL_MODULE=' + module_name(), 'txn', 'install-exact' if exact else 'install']
+    cmd = ['env', 'TXN_INSTALL_MODULE=' + module_name(),
+           'txn', 'install-exact' if exact else 'install']
     cmd.extend(args)
     cmd[-1] = prefix + cmd[-1]
     subprocess.check_call(cmd)
@@ -69,7 +70,8 @@ class LXD(object):
         if name == '':
             self.prefix = ''
         else:
-            self.prefix = '/var/lib/lxd/containers/{name}/rootfs'.format(name=name)
+            self.prefix = \
+                '/var/lib/lxd/containers/{name}/rootfs'.format(name=name)
         self.txn = Txn(prefix=self.prefix)
 
     def exec_with_output(self, cmd):
@@ -94,10 +96,13 @@ class LXD(object):
         if self.prefix == '':
             return []
 
-        outside_b = subprocess.check_output(['dpkg-query', '-W', '-f', '${Version}', '--', pkgname])
+        outside_b = subprocess.check_output(['dpkg-query', '-W',
+                                             '-f', '${Version}', '--',
+                                             pkgname])
         outside = outside_b.decode().split('\n')[0]
 
-        present = self.exec_with_output(['dpkg-query', '-W', '-f', '${Version}', '--', pkgname])
+        present = self.exec_with_output(['dpkg-query', '-W',
+                                         '-f', '${Version}', '--', pkgname])
         if present['res'] == 0:
             return []
 

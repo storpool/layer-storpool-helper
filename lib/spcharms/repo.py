@@ -12,8 +12,10 @@ class StorPoolRepoException(Exception):
 
 
 re_policy = {
-    'installed': re.compile('\s* Installed: \s+ (?P<version> \S+ ) \s* $', re.X),
-    'candidate': re.compile('\s* Candidate: \s+ (?P<version> \S+ ) \s* $', re.X),
+    'installed': re.compile('\s* Installed: \s+ (?P<version> \S+ ) \s* $',
+                            re.X),
+    'candidate': re.compile('\s* Candidate: \s+ (?P<version> \S+ ) \s* $',
+                            re.X),
 }
 
 
@@ -56,15 +58,23 @@ def pkgs_to_install(requested, policy):
     for p in policy:
         ver = policy[p]
         if ver is None:
-            return ('could not obtain APT policy information about the {pkg} package'.format(pkg=p), None)
+            return ('could not obtain APT policy information about '
+                    'the {pkg} package'.format(pkg=p),
+                    None)
 
         req = requested[p]
-        if ver['installed'] is not None and (req == '*' or req == ver['installed']):
+        if ver['installed'] is not None and \
+           (req == '*' or req == ver['installed']):
             continue
         elif ver['candidate'] is None:
-            return ('the {pkg} package is not available in the repositories, cannot proceed'.format(pkg=p), None)
+            return ('the {pkg} package is not available in the repositories, '
+                    'cannot proceed'.format(pkg=p),
+                    None)
         elif req != '*' and req != ver['candidate']:
-            return ('the {req} version of the {pkg} package is not available in the repositories, we have {cand} instead'.format(req=req, pkg=p, cand=ver['candidate']), None)
+            return ('the {req} version of the {pkg} package is not available '
+                    'in the repositories, we have {cand} instead'
+                    .format(req=req, pkg=p, cand=ver['candidate']),
+                    None)
 
         to_install.append(p)
 
@@ -117,7 +127,9 @@ def install_packages(requested):
     try:
         policy = apt_pkg_policy(requested.keys())
     except Exception as e:
-        return ('Could not query the APT policy for "{names}": {err}'.format(names=sorted(list(requested.keys())), err=e), None)
+        return ('Could not query the APT policy for "{names}": {err}'
+                .format(names=sorted(list(requested.keys())), err=e),
+                None)
 
     (err, to_install) = pkgs_to_install(requested, policy)
     if err is not None:
@@ -126,7 +138,9 @@ def install_packages(requested):
     try:
         return (None, apt_install(to_install))
     except Exception as e:
-        return ('Could not install the "{names}" packages: {e}'.format(names=sorted(to_install), e=e), None)
+        return ('Could not install the "{names}" packages: {e}'
+                .format(names=sorted(to_install), e=e),
+                None)
 
 
 def pkg_record_file():
@@ -191,7 +205,8 @@ def record_packages(layer_name, names, charm_name = None):
         # Hm, any packages that no longer need to be uninstalled?
         if 'packages' not in data:
             data['packages'] = {'remove': []}
-        data['packages']['remove'] = list(sorted(set(data['packages']['remove']).difference(cset)))
+        data['packages']['remove'] = \
+            list(sorted(set(data['packages']['remove']).difference(cset)))
 
         # Right, so let's write it back
         listf.seek(0)
@@ -248,14 +263,19 @@ def unrecord_packages(layer_name, charm_name = None):
                 # Sigh... don't we just love special cases...
                 pkgs = set(['libwww-perl', 'liblwp-protocol-https-perl'])
                 if pkgs.issubset(try_remove):
-                    if subprocess.call(['dpkg', '-r', '--dry-run', '--'] + list(pkgs), stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0:
+                    if subprocess.call(['dpkg', '-r', '--dry-run', '--'] +
+                                       list(pkgs),
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE) == 0:
                         subprocess.call(['dpkg', '--purge', '--'] + list(pkgs))
                         removed_now = removed_now.union(pkgs)
                         changed = True
 
                 # Now go for them all
                 for pkg in try_remove:
-                    if subprocess.call(['dpkg', '-r', '--dry-run', '--', pkg], stdout=subprocess.PIPE, stderr=subprocess.PIPE) != 0:
+                    if subprocess.call(['dpkg', '-r', '--dry-run', '--', pkg],
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE) != 0:
                         continue
                     subprocess.call(['dpkg', '--purge', '--', pkg])
                     removed_now.add(pkg)
@@ -266,7 +286,8 @@ def unrecord_packages(layer_name, charm_name = None):
                     try_remove = try_remove.difference(removed_now)
                 else:
                     break
-            data['packages']['remove'] = list(sorted(try_remove.difference(removed)))
+            data['packages']['remove'] = \
+                list(sorted(try_remove.difference(removed)))
 
             # Let's write it back again if needed
             if changed:
