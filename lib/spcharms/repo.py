@@ -166,20 +166,6 @@ def install_packages(requested):
                 None)
 
 
-def pkg_record_file():
-    """
-    FIXME: remove me
-    """
-    return '/var/lib/' + hookenv.charm_name() + '.packages'
-
-
-def charm_install_flag_dir():
-    """
-    FIXME: remove me
-    """
-    return '/var/lib/storpool/install-charms'
-
-
 def charm_install_list_file():
     """
     Return the name of the file used for keeping track of installed packages.
