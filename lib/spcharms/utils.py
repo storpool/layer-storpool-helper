@@ -1,3 +1,6 @@
+"""
+A StorPool Juju charm helper module: miscellaneous utility functions.
+"""
 import platform
 import time
 
@@ -7,6 +10,10 @@ rdebug_node = platform.node()
 
 
 def rdebug(s, prefix='storpool'):
+    """
+    Log a diagnostic message through the charms model logger and also,
+    if explicitly requested in the charm configuration, to a local file.
+    """
     global rdebug_node
     data = '[[{hostname}:{prefix}]] {s}'.format(hostname=rdebug_node,
                                                 prefix=prefix,
@@ -24,6 +31,9 @@ def rdebug(s, prefix='storpool'):
 
 
 def check_in_lxc():
+    """
+    Check whether we are currently running within an LXC/LXD container.
+    """
     try:
         with open('/proc/1/environ', mode='r') as f:
             contents = f.read()

@@ -1,3 +1,7 @@
+"""
+A StorPool Juju charm helper module for keeping track of Ubuntu packages that
+have been installed by this unit.
+"""
 import fcntl
 import json
 import os
@@ -8,6 +12,9 @@ from charmhelpers.core import hookenv
 
 
 class StorPoolRepoException(Exception):
+    """
+    Indicate spcharms.repo errors; no additional error information.
+    """
     pass
 
 
@@ -20,6 +27,10 @@ re_policy = {
 
 
 def apt_pkg_policy(names):
+    """
+    Extract the "currently installed version" and "candidate version" fields
+    from the `apt-cache policy` output for the specified package.
+    """
     res = {}
     for pkg in names:
         pres = {}
@@ -53,6 +64,10 @@ def apt_pkg_policy(names):
 
 
 def pkgs_to_install(requested, policy):
+    """
+    Return a list of packages that actually need to be installed (not installed
+    at all or different versions).
+    """
     to_install = []
 
     for p in policy:
@@ -82,6 +97,10 @@ def pkgs_to_install(requested, policy):
 
 
 def apt_install(pkgs):
+    """
+    Install the specified packages and return a list of all the packages that
+    were installed or upgraded along with them.
+    """
     previous_b = subprocess.check_output([
         'dpkg-query', '-W', '--showformat',
         '${Package}\t${Version}\t${Status}\n'
@@ -124,6 +143,10 @@ def apt_install(pkgs):
 
 
 def install_packages(requested):
+    """
+    If any of the specified packages actually need to be installed, do that and
+    return the list of installed ones (including dependencies).
+    """
     try:
         policy = apt_pkg_policy(requested.keys())
     except Exception as e:
@@ -144,14 +167,23 @@ def install_packages(requested):
 
 
 def pkg_record_file():
+    """
+    FIXME: remove me
+    """
     return '/var/lib/' + hookenv.charm_name() + '.packages'
 
 
 def charm_install_flag_dir():
+    """
+    FIXME: remove me
+    """
     return '/var/lib/storpool/install-charms'
 
 
 def charm_install_list_file():
+    """
+    Return the name of the file used for keeping track of installed packages.
+    """
     return '/var/lib/storpool/install-charms.json'
 
 # The part of the data structure that we care about:
@@ -172,6 +204,9 @@ def charm_install_list_file():
 
 
 def record_packages(layer_name, names, charm_name = None):
+    """
+    Record the list of packages installed by the current unit's layer.
+    """
     if charm_name is None:
         charm_name = hookenv.charm_name()
 
@@ -215,6 +250,11 @@ def record_packages(layer_name, names, charm_name = None):
 
 
 def unrecord_packages(layer_name, charm_name = None):
+    """
+    Remove the packages installed by the specified unit's layer from
+    the record.
+    Uninstall those of them are not wanted by any other unit's layer.
+    """
     if charm_name is None:
         charm_name = hookenv.charm_name()
 
@@ -299,6 +339,9 @@ def unrecord_packages(layer_name, charm_name = None):
 
 
 def list_package_files(name):
+    """
+    List the files installed by the specified package.
+    """
     files_b = subprocess.check_output(['dpkg', '-L', '--', name])
     return sorted(filter(
         lambda s: len(s) > 0,

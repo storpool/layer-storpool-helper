@@ -1,9 +1,15 @@
+"""
+A StorPool Juju charm helper module for accessing the StorPool configuration.
+"""
 import subprocess
 
 cached_config = None
 
 
 def get_cached_dict():
+    """
+    Get the StorPool configuration, cache it the first time.
+    """
     global cached_config
     if cached_config is not None:
         return cached_config
@@ -20,9 +26,15 @@ def get_cached_dict():
 
 
 def get_dict():
+    """
+    Get the StorPool configuration.
+    """
     return get_cached_dict()
 
 
 def drop_cache():
+    """
+    Drop the StorPool configuration cache.
+    """
     global cached_config
     cached_config = None
