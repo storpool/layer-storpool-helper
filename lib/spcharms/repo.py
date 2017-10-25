@@ -177,7 +177,7 @@ def record_packages(layer_name, names, charm_name = None):
 
     if not os.path.isdir('/var/lib/storpool'):
         os.mkdir('/var/lib/storpool', mode=0o700)
-    with open(charm_install_list_file(), mode='at') as af:
+    with open(charm_install_list_file(), mode='at'):
         # Just making sure the file exists so we can open it as r+t.
         pass
     with open(charm_install_list_file(), mode='r+t') as listf:

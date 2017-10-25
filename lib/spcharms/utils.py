@@ -29,5 +29,5 @@ def check_in_lxc():
             contents = f.read()
             return bool(list(filter(lambda s: s == 'container=lxc',
                                     contents.split('\x00'))))
-    except Exception as e:
+    except Exception:
         return False

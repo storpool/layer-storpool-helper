@@ -96,11 +96,6 @@ class LXD(object):
         if self.prefix == '':
             return []
 
-        outside_b = subprocess.check_output(['dpkg-query', '-W',
-                                             '-f', '${Version}', '--',
-                                             pkgname])
-        outside = outside_b.decode().split('\n')[0]
-
         present = self.exec_with_output(['dpkg-query', '-W',
                                          '-f', '${Version}', '--', pkgname])
         if present['res'] == 0:
