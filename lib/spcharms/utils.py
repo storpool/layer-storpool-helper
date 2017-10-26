@@ -8,6 +8,7 @@ import time
 from charmhelpers.core import hookenv
 
 from spcharms import config as spconfig
+from spcharms import status as spstatus
 
 rdebug_node = platform.node()
 
@@ -51,7 +52,7 @@ def err(msg):
     Log an error message and set the unit's status.
     """
     hookenv.log(msg, hookenv.ERROR)
-    hookenv.status_set('maintenance', msg)
+    spstatus.set('maintenance', msg)
 
 
 def bypassed(name):
