@@ -46,6 +46,14 @@ def check_in_lxc():
         return False
 
 
+def err(msg):
+    """
+    Log an error message and set the unit's status.
+    """
+    hookenv.log(msg, hookenv.ERROR)
+    hookenv.status_set('maintenance', msg)
+
+
 def bypassed(name):
     """
     Check whether the administrator has explicitly specified that
@@ -71,17 +79,13 @@ def check_cgroups(service):
     cfg = spconfig.get_dict()
     use_cgroups = cfg.get('SP_USE_CGROUPS', '0').lower()
     if use_cgroups not in ('1', 'y', 'yes', 't', 'true'):
-        msg = 'The SP_USE_CGROUPS setting is not enabled in ' \
-            'the StorPool configuration (bypass: use_cgroups)'
-        hookenv.log(msg, hookenv.ERROR)
-        hookenv.status_set('maintenance', msg)
+        err('The SP_USE_CGROUPS setting is not enabled in '
+            'the StorPool configuration (bypass: use_cgroups)')
         return False
     var = 'SP_{upper}_CGROUPS'.format(upper=service.upper())
     cgstr = cfg.get(var, None)
     if cgstr is None:
-        msg = 'No {var} in the StorPool configuration'.format(var=var)
-        hookenv.log(msg, hookenv.ERROR)
-        hookenv.status_set('maintenance', msg)
+        err('No {var} in the StorPool configuration'.format(var=var))
         return False
     rdebug('About to examine the "{cg}" string for valid cgroups'
            .format(cg=cgstr))
@@ -89,18 +93,14 @@ def check_cgroups(service):
         rdebug('- parsing {d}'.format(d=cgdef))
         comp = cgdef.split(':')
         if len(comp) != 2:
-            msg = 'Unexpected component in {var}: {comp}' \
-                .format(var=var, comp=cgdef)
-            hookenv.log(msg, hookenv.ERROR)
-            hookenv.status_set('maintenance', msg)
+            err('Unexpected component in {var}: {comp}'
+                .format(var=var, comp=cgdef))
             return False
         path = '/sys/fs/cgroup/{tp}/{p}'.format(tp=comp[0], p=comp[1])
         rdebug('  - checking for {path}'.format(path=path))
         if not os.path.isdir(path):
-            msg = 'No {comp} group for the {svc}'.format(comp=cgdef,
-                                                         svc=service)
-            hookenv.log(msg, hookenv.ERROR)
-            hookenv.status_set('maintenance', msg)
+            err('No {comp} group for the {svc}'
+                .format(comp=cgdef, svc=service))
             return False
 
     rdebug('- the cgroups for {svc} are set up'.format(svc=service))
