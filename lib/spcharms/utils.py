@@ -1,10 +1,13 @@
 """
 A StorPool Juju charm helper module: miscellaneous utility functions.
 """
+import os
 import platform
 import time
 
 from charmhelpers.core import hookenv
+
+from spcharms import config as spconfig
 
 rdebug_node = platform.node()
 
@@ -49,3 +52,53 @@ def bypassed(name):
     the installation should proceed despite some detected problems.
     """
     return name in hookenv.config().get('bypassed_checks', '').split(',')
+
+
+def check_cgroups(service):
+    """
+    Check whether the use of cgroups is enabled in the StorPool configuration
+    and, if it is, whether the cgroups defined for the specified service are
+    set up on this node.
+    """
+    rdebug('Checking the cgroup config for {svc}'.format(svc=service))
+    if bypassed('use_cgroups'):
+        rdebug('- cgroups bypassed altogether')
+        return True
+
+    cfg = spconfig.get_dict()
+    use_cgroups = cfg.get('SP_USE_CGROUPS', '0').lower()
+    if use_cgroups not in ('1', 'y', 'yes', 't', 'true'):
+        msg = 'The SP_USE_CGROUPS setting is not enabled in ' \
+            'the StorPool configuration (bypass: use_cgroups)'
+        hookenv.log(msg, hookenv.ERROR)
+        hookenv.status_set('maintenance', msg)
+        return False
+    var = 'SP_{upper}_CGROUPS'.format(upper=service.upper())
+    cgstr = cfg.get(var, None)
+    if cgstr is None:
+        msg = 'No {var} in the StorPool configuration'.format(var=var)
+        hookenv.log(msg, hookenv.ERROR)
+        hookenv.status_set('maintenance', msg)
+        return False
+    rdebug('About to examine the "{cg}" string for valid cgroups'
+           .format(cg=cgstr))
+    for cgdef in filter(lambda s: s != '-g', cgstr.strip().split()):
+        rdebug('- parsing {d}'.format(d=cgdef))
+        comp = cgdef.split(':')
+        if len(comp) != 2:
+            msg = 'Unexpected component in {var}: {comp}' \
+                .format(var=var, comp=cgdef)
+            hookenv.log(msg, hookenv.ERROR)
+            hookenv.status_set('maintenance', msg)
+            return False
+        path = '/sys/fs/cgroup/{tp}/{p}'.format(tp=comp[0], p=comp[1])
+        rdebug('  - checking for {path}'.format(path=path))
+        if not os.path.isdir(path):
+            msg = 'No {comp} group for the {svc}'.format(comp=cgdef,
+                                                         svc=service)
+            hookenv.log(msg, hookenv.ERROR)
+            hookenv.status_set('maintenance', msg)
+            return False
+
+    rdebug('- the cgroups for {svc} are set up'.format(svc=service))
+    return True
