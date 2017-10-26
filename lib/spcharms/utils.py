@@ -41,3 +41,11 @@ def check_in_lxc():
                                     contents.split('\x00'))))
     except Exception:
         return False
+
+
+def bypassed(name):
+    """
+    Check whether the administrator has explicitly specified that
+    the installation should proceed despite some detected problems.
+    """
+    return name in hookenv.config().get('bypassed_checks', '').split(',')
