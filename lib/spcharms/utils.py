@@ -62,6 +62,9 @@ def check_cgroups(service):
     """
     rdebug('Checking the cgroup config for {svc}'.format(svc=service))
     if bypassed('use_cgroups'):
+        hookenv.log('The "use_cgroups" bypass is meant '
+                    'FOR DEVELOPMENT ONLY!  DO NOT run a StorPool cluster in '
+                    'production with it!', hookenv.WARNING)
         rdebug('- cgroups bypassed altogether')
         return True
 
