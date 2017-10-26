@@ -52,7 +52,7 @@ def err(msg):
     Log an error message and set the unit's status.
     """
     hookenv.log(msg, hookenv.ERROR)
-    spstatus.set('maintenance', msg)
+    spstatus.set('error', msg)
 
 
 def bypassed(name):
