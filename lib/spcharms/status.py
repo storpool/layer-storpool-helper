@@ -50,3 +50,21 @@ def npset(status, message):
     """
     if not get():
         hookenv.status_set(status, message)
+
+
+def set_status_reset_handler(name):
+    """
+    Store the specified layer name as the layer that is allowed to reset
+    the status even if a persistent one has been set.
+    """
+    unitdata.kv().set('storpool-utils.persistent-status-handler', name)
+
+
+def reset_if_allowed(name):
+    """
+    Reset the persistent status if the layer with the specified name has
+    previously been set as the one that is allowed to.
+    """
+    stored = unitdata.kv().get('storpool-utils.persistent-status-handler', '')
+    if name == stored:
+        reset()
