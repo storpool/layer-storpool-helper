@@ -7,7 +7,7 @@ parses the output of the storpool_confshow command.
 
 import os
 import sys
-import testtools
+import unittest
 
 import mock
 import six
@@ -35,7 +35,7 @@ test_other_config = {
 }
 
 
-class TestConfig(testtools.TestCase):
+class TestConfig(unittest.TestCase):
     def setUp(self):
         """
         Clear the cached configuration between tests.
