@@ -9,25 +9,12 @@ from charms.reactive import helpers
 
 from charmhelpers.core import hookenv, unitdata
 
-from spcharms import utils as sputils
 
-
-def init_state(db):
+def init_state():
     """
-    Initialize the local state: the current node itself is present, and
-    if the OpenStack integration has found a Cinder installation in an LXD,
-    that one is present, too.
+    Initialize the local state as an empty dictionary.
     """
-    local_state = {
-                   sputils.get_machine_id(): True,
-                  }
-    lxd_cinder = db.get('storpool-openstack-integration.lxd-name',
-                        default=None)
-    if lxd_cinder is not None:
-        local_state[lxd_cinder] = True
-    return {
-            '-local': local_state,
-           }
+    return {'-local': {}}
 
 
 def get_state(db=None):
@@ -38,7 +25,7 @@ def get_state(db=None):
         db = unitdata.kv()
     state = db.get('storpool-service.state', default=None)
     if state is None:
-        state = init_state(db)
+        state = init_state()
         changed = True
     else:
         changed = False

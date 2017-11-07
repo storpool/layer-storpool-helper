@@ -111,49 +111,11 @@ unitdata.kv = lambda: r_kv
 from spcharms import service_hook as testee
 
 SP_NODE = '42'
-CINDER_LXD_KEY = 'storpool-openstack-integration.lxd-name'
-CINDER_LXD_NAME = '42/lxd/3'
-US_TWO = set([SP_NODE, CINDER_LXD_NAME])
 STATE_KEY = 'storpool-service.state'
-ENVIRONMENT_KEY = 'storpool-helper.machine-id'
 
-STATE_ONLY_ME = {
-    '-local': {
-        SP_NODE: True,
-    }
+STATE_NONE = {
+    '-local': {},
 }
-
-STATE_US_TWO = {
-    '-local': {
-        SP_NODE: True,
-        CINDER_LXD_NAME: True
-    }
-}
-
-ENVIRONMENT = {
-    'env': {
-        'JUJU_MACHINE_ID': SP_NODE,
-    }
-}
-
-
-def mock_execution_environment(f):
-    def inner1(inst, *args, **kwargs):
-        def get_environment():
-            """
-            Return a mock-up of a charm unit's execution environment,
-            just enough to get spcharms.utils.get_machine_id() to work.
-            """
-            return dict(ENVIRONMENT)
-
-        @mock.patch('charmhelpers.core.hookenv.execution_environment',
-                    new=get_environment)
-        def inner2(*args, **kwargs):
-            return f(inst, *args, **kwargs)
-
-        return inner2()
-
-    return inner1
 
 
 class TestStorPoolService(unittest.TestCase):
@@ -171,42 +133,33 @@ class TestStorPoolService(unittest.TestCase):
     def fail_on_err(self, msg):
         self.fail('sputils.err() invoked: {msg}'.format(msg=msg))
 
-    @mock_execution_environment
     def test_init(self):
         """
-        Test the initial creation of a service presence structure
-        only describing the local node.
+        Test the initial creation of an empty service presence structure.
         """
-        # Initialize a service state object with no Cinder LXD
-        state = testee.init_state(r_kv)
-        self.assertEqual(state, STATE_ONLY_ME)
+        state = testee.init_state()
+        self.assertEqual(state, STATE_NONE)
 
-        # Now specify one
-        r_kv.set(CINDER_LXD_KEY, CINDER_LXD_NAME)
-        state = testee.init_state(r_kv)
-        self.assertEqual(state, STATE_US_TWO)
-
-    @mock_execution_environment
     def test_get_state(self):
         """
         Test the various combinations of options for get_state() to
         fetch its data from.
         """
-        r_kv.set(CINDER_LXD_KEY, 'r')
+        r_kv.set('something', 'r')
         b_kv = MockDB()
-        b_kv.set(CINDER_LXD_KEY, 'b')
+        b_kv.set('something else', 'b')
         e_kv = MockDB()
 
         (state_r, ch_t) = testee.get_state()
-        self.assertEqual(set(state_r['-local'].keys()), set([SP_NODE, 'r']))
+        self.assertEqual(set(state_r['-local'].keys()), set())
         self.assertTrue(ch_t)
 
         (state_b, ch_t) = testee.get_state(b_kv)
-        self.assertEqual(set(state_b['-local'].keys()), set([SP_NODE, 'b']))
+        self.assertEqual(set(state_b['-local'].keys()), set())
         self.assertTrue(ch_t)
 
         (state_e, ch_t) = testee.get_state(e_kv)
-        self.assertEqual(list(state_e['-local'].keys()), [SP_NODE])
+        self.assertEqual(list(state_e['-local'].keys()), [])
         self.assertTrue(ch_t)
 
         r_kv.set(STATE_KEY, state_b)
@@ -288,7 +241,6 @@ class TestStorPoolService(unittest.TestCase):
         self.assertTrue(ch)
         r_kv.r_clear()
 
-    @mock_execution_environment
     @mock.patch('charmhelpers.core.hookenv.relation_set')
     @mock.patch('charmhelpers.core.hookenv.relation_ids')
     def test_add_present_node(self, rel_ids, rel_set):
@@ -313,11 +265,9 @@ class TestStorPoolService(unittest.TestCase):
         self.assertEqual({
             STATE_KEY: {
                 '-local': {
-                    SP_NODE: True,
                     node_name: True,
                 },
             },
-            ENVIRONMENT_KEY: SP_NODE,
         }, r_kv.r_get_all())
 
         jdata = json.dumps(r_kv.get(STATE_KEY)['-local'])
@@ -336,12 +286,10 @@ class TestStorPoolService(unittest.TestCase):
         self.assertEqual({
             STATE_KEY: {
                 '-local': {
-                    SP_NODE: True,
                     node_name: True,
                     another_name: True,
                 },
             },
-            ENVIRONMENT_KEY: SP_NODE,
         }, r_kv.r_get_all())
 
         jdata = json.dumps(r_kv.get(STATE_KEY)['-local'])
