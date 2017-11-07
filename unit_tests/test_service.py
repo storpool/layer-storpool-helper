@@ -5,7 +5,6 @@ A set of unit tests for the storpool-service layer.
 """
 
 import os
-import platform
 import sys
 import unittest
 
@@ -111,11 +110,12 @@ unitdata.kv = lambda: r_kv
 
 from spcharms import service_hook as testee
 
-SP_NODE = platform.node()
+SP_NODE = '42'
 CINDER_LXD_KEY = 'storpool-openstack-integration.lxd-name'
-CINDER_LXD_NAME = 'juju-cinder'
+CINDER_LXD_NAME = '42/lxd/3'
 US_TWO = set([SP_NODE, CINDER_LXD_NAME])
 STATE_KEY = 'storpool-service.state'
+ENVIRONMENT_KEY = 'storpool-helper.machine-id'
 
 STATE_ONLY_ME = {
     '-local': {
@@ -129,6 +129,31 @@ STATE_US_TWO = {
         CINDER_LXD_NAME: True
     }
 }
+
+ENVIRONMENT = {
+    'env': {
+        'JUJU_MACHINE_ID': SP_NODE,
+    }
+}
+
+
+def mock_execution_environment(f):
+    def inner1(inst, *args, **kwargs):
+        def get_environment():
+            """
+            Return a mock-up of a charm unit's execution environment,
+            just enough to get spcharms.utils.get_machine_id() to work.
+            """
+            return dict(ENVIRONMENT)
+
+        @mock.patch('charmhelpers.core.hookenv.execution_environment',
+                    new=get_environment)
+        def inner2(*args, **kwargs):
+            return f(inst, *args, **kwargs)
+
+        return inner2()
+
+    return inner1
 
 
 class TestStorPoolService(unittest.TestCase):
@@ -146,6 +171,7 @@ class TestStorPoolService(unittest.TestCase):
     def fail_on_err(self, msg):
         self.fail('sputils.err() invoked: {msg}'.format(msg=msg))
 
+    @mock_execution_environment
     def test_init(self):
         """
         Test the initial creation of a service presence structure
@@ -160,6 +186,7 @@ class TestStorPoolService(unittest.TestCase):
         state = testee.init_state(r_kv)
         self.assertEqual(state, STATE_US_TWO)
 
+    @mock_execution_environment
     def test_get_state(self):
         """
         Test the various combinations of options for get_state() to
@@ -261,6 +288,7 @@ class TestStorPoolService(unittest.TestCase):
         self.assertTrue(ch)
         r_kv.r_clear()
 
+    @mock_execution_environment
     @mock.patch('charmhelpers.core.hookenv.relation_set')
     @mock.patch('charmhelpers.core.hookenv.relation_ids')
     def test_add_present_node(self, rel_ids, rel_set):
@@ -289,6 +317,7 @@ class TestStorPoolService(unittest.TestCase):
                     node_name: True,
                 },
             },
+            ENVIRONMENT_KEY: SP_NODE,
         }, r_kv.r_get_all())
 
         jdata = json.dumps(r_kv.get(STATE_KEY)['-local'])
@@ -312,6 +341,7 @@ class TestStorPoolService(unittest.TestCase):
                     another_name: True,
                 },
             },
+            ENVIRONMENT_KEY: SP_NODE,
         }, r_kv.r_get_all())
 
         jdata = json.dumps(r_kv.get(STATE_KEY)['-local'])

@@ -3,12 +3,13 @@ A StorPool Juju charms helper module that keeps track of peer units of
 the same charm so that the state may be reported to other charms.
 """
 import json
-import platform
 
 from charms import reactive
 from charms.reactive import helpers
 
 from charmhelpers.core import hookenv, unitdata
+
+from spcharms import utils as sputils
 
 
 def init_state(db):
@@ -18,7 +19,7 @@ def init_state(db):
     that one is present, too.
     """
     local_state = {
-                   platform.node(): True,
+                   sputils.get_machine_id(): True,
                   }
     lxd_cinder = db.get('storpool-openstack-integration.lxd-name',
                         default=None)
