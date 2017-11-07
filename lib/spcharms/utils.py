@@ -5,7 +5,7 @@ import os
 import platform
 import time
 
-from charmhelpers.core import hookenv
+from charmhelpers.core import hookenv, unitdata
 
 from spcharms import config as spconfig
 from spcharms import status as spstatus
@@ -106,3 +106,27 @@ def check_cgroups(service):
 
     rdebug('- the cgroups for {svc} are set up'.format(svc=service))
     return True
+
+
+def get_machine_id():
+    """
+    Get the Juju node ID from the environment; may return "None" if
+    the environment settings are not as expected.
+    """
+    kv = unitdata.kv()
+    val = kv.get('storpool-helper.machine-id', None)
+    if val is None:
+        env = hookenv.execution_environment()
+        if 'env' not in env:
+            rdebug('No "env" in the execution environment: {env}'
+                   .format(env=env))
+            val = ''
+        elif 'JUJU_MACHINE_ID' not in env['env']:
+            rdebug('No JUJU_MACHINE_ID in the environment: {env}'
+                   .format(env=env['env']))
+            val = ''
+        else:
+            val = env['env']['JUJU_MACHINE_ID']
+        kv.set('storpool-helper.machine-id', val)
+
+    return None if val == '' else val
