@@ -47,7 +47,7 @@ def update_state(db, state, changed, key, name, value):
     if key not in state:
         state[key] = {}
         changed = True
-    if state[key].get(name, not value) != value:
+    if state[key].get(name, '') != value:
         state[key][name] = value
         changed = True
 
@@ -56,13 +56,13 @@ def update_state(db, state, changed, key, name, value):
     return changed
 
 
-def add_present_node(name, rel_name, rdebug=lambda s: s):
+def add_present_node(name, value, rel_name, rdebug=lambda s: s):
     """
     Update a peer's state and send the full structure right back if needed.
     """
     db = unitdata.kv()
     (state, changed) = get_state(db)
-    changed = update_state(db, state, changed, '-local', name, True)
+    changed = update_state(db, state, changed, '-local', name, value)
     if changed:
         rdebug('hm, let us then try to fetch the relation ids for {rel_name}'
                .format(rel_name=rel_name))

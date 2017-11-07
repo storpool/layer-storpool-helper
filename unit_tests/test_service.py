@@ -259,13 +259,13 @@ class TestStorPoolService(unittest.TestCase):
         # Start with an empty database, this is supposed to fill out
         # the information about our node, too.
         node_name = 'new-node'
-        testee.add_present_node(node_name, 'peer-relation')
+        testee.add_present_node(node_name, '13', 'peer-relation')
 
         # Now let's see if it has filled in the database...
         self.assertEqual({
             STATE_KEY: {
                 '-local': {
-                    node_name: True,
+                    node_name: '13',
                 },
             },
         }, r_kv.r_get_all())
@@ -282,12 +282,12 @@ class TestStorPoolService(unittest.TestCase):
         # OK, let's see what happens if another node comes up
         rel_data_received = []
         another_name = 'newer-node'
-        testee.add_present_node(another_name, 'peer-relation')
+        testee.add_present_node(another_name, '32', 'peer-relation')
         self.assertEqual({
             STATE_KEY: {
                 '-local': {
-                    node_name: True,
-                    another_name: True,
+                    node_name: '13',
+                    another_name: '32',
                 },
             },
         }, r_kv.r_get_all())
