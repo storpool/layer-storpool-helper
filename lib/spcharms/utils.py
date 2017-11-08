@@ -3,6 +3,7 @@ A StorPool Juju charm helper module: miscellaneous utility functions.
 """
 import os
 import platform
+import subprocess
 import time
 
 from charmhelpers.core import hookenv, unitdata
