@@ -5,9 +5,9 @@ import subprocess
 
 from charmhelpers.core import unitdata
 
-cached_config = None
+from spcharms import kvdata
 
-CONFIG_KEY = 'storpool-config.our-id'
+cached_config = None
 
 
 def get_cached_dict():
@@ -48,18 +48,18 @@ def get_our_id():
     """
     Fetch the cached SP_OURID value from the unit's database.
     """
-    return unitdata.kv().get(CONFIG_KEY, None)
+    return unitdata.kv().get(kvdata.KEY_OURID, None)
 
 
 def set_our_id(value):
     """
     Store the SP_OURID value into the unit's database.
     """
-    unitdata.kv().set(CONFIG_KEY, value)
+    unitdata.kv().set(kvdata.KEY_OURID, value)
 
 
 def unset_our_id():
     """
     Store the SP_OURID value into the unit's database.
     """
-    unitdata.kv().unset(CONFIG_KEY)
+    unitdata.kv().unset(kvdata.KEY_OURID)

@@ -4,12 +4,14 @@ A StorPool Juju charm helper module: persistent unit status message.
 
 from charmhelpers.core import hookenv, unitdata
 
+from spcharms import kvdata
+
 
 def get():
     """
     Get the persistent status as a (status, message) tuple or None.
     """
-    st = unitdata.kv().get('storpool-utils.persistent-status', default=None)
+    st = unitdata.kv().get(kvdata.KEY_SPSTATUS, default=None)
     if st is None:
         return None
     return st.split(':', 1)
@@ -24,14 +26,14 @@ def set(status, msg):
     itself is set to "maintenance" instead.
     """
     hookenv.status_set(status if status != 'error' else 'maintenance', msg)
-    unitdata.kv().set('storpool-utils.persistent-status', status + ':' + msg)
+    unitdata.kv().set(kvdata.KEY_SPSTATUS, status + ':' + msg)
 
 
 def reset():
     """
     Remove a persistent status.
     """
-    unitdata.kv().unset('storpool-utils.persistent-status')
+    unitdata.kv().unset(kvdata.KEY_SPSTATUS)
 
 
 def reset_unless_error():
@@ -57,7 +59,7 @@ def set_status_reset_handler(name):
     Store the specified layer name as the layer that is allowed to reset
     the status even if a persistent one has been set.
     """
-    unitdata.kv().set('storpool-utils.persistent-status-handler', name)
+    unitdata.kv().set(kvdata.KEY_SPSTATUS, name)
 
 
 def reset_if_allowed(name):
@@ -65,6 +67,6 @@ def reset_if_allowed(name):
     Reset the persistent status if the layer with the specified name has
     previously been set as the one that is allowed to.
     """
-    stored = unitdata.kv().get('storpool-utils.persistent-status-handler', '')
+    stored = unitdata.kv().get(kvdata.KEY_SPSTATUS, '')
     if name == stored:
         reset()

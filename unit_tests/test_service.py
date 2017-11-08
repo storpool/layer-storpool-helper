@@ -108,10 +108,10 @@ r_kv = MockDB()
 unitdata.kv = lambda: r_kv
 
 
+from spcharms import kvdata
 from spcharms import service_hook as testee
 
 SP_NODE = '42'
-STATE_KEY = 'storpool-service.state'
 
 STATE_NONE = {
     '-local': {},
@@ -162,17 +162,17 @@ class TestStorPoolService(unittest.TestCase):
         self.assertEqual(list(state_e['-local'].keys()), [])
         self.assertTrue(ch_t)
 
-        r_kv.set(STATE_KEY, state_b)
+        r_kv.set(kvdata.KEY_PRESENCE, state_b)
         (state_b_r, ch_f) = testee.get_state()
         self.assertEqual(state_b_r, state_b)
         self.assertFalse(ch_f)
 
-        b_kv.set(STATE_KEY, state_e)
+        b_kv.set(kvdata.KEY_PRESENCE, state_e)
         (state_e_b, ch_f) = testee.get_state(b_kv)
         self.assertEqual(state_e_b, state_e)
         self.assertFalse(ch_f)
 
-        e_kv.set(STATE_KEY, state_r)
+        e_kv.set(kvdata.KEY_PRESENCE, state_r)
         (state_r_e, ch_f) = testee.get_state(e_kv)
         self.assertEqual(state_r_e, state_r)
         self.assertFalse(ch_f)
@@ -196,20 +196,20 @@ class TestStorPoolService(unittest.TestCase):
 
         ch = testee.update_state(r_kv, test, True, 'a', 'aa', False)
         self.assertEqual(test, st_false)
-        self.assertEqual(r_kv.r_get_all(), {STATE_KEY: test})
+        self.assertEqual(r_kv.r_get_all(), {kvdata.KEY_PRESENCE: test})
         self.assertTrue(ch)
         r_kv.r_clear()
 
         ch = testee.update_state(r_kv, test, False, 'a', 'aa', True)
         self.assertNotEqual(test, st_false)
         self.assertNotEqual(test, st_all)
-        self.assertEqual(r_kv.r_get_all(), {STATE_KEY: test})
+        self.assertEqual(r_kv.r_get_all(), {kvdata.KEY_PRESENCE: test})
         self.assertTrue(ch)
         r_kv.r_clear()
 
         ch = testee.update_state(r_kv, test, False, 'b', 'ba', True)
         self.assertEqual(test, st_all)
-        self.assertEqual(r_kv.r_get_all(), {STATE_KEY: test})
+        self.assertEqual(r_kv.r_get_all(), {kvdata.KEY_PRESENCE: test})
         self.assertTrue(ch)
         r_kv.r_clear()
 
@@ -218,14 +218,14 @@ class TestStorPoolService(unittest.TestCase):
         ch = testee.update_state(r_kv, test, False, 'b', 'ba', False)
         self.assertNotEqual(test, st_a)
         self.assertNotEqual(test, st_false)
-        self.assertEqual(r_kv.r_get_all(), {STATE_KEY: test})
+        self.assertEqual(r_kv.r_get_all(), {kvdata.KEY_PRESENCE: test})
         self.assertTrue(ch)
         r_kv.r_clear()
 
         ch = testee.update_state(r_kv, test, False, 'b', 'bb', True)
         self.assertNotEqual(test, st_a)
         self.assertNotEqual(test, st_false)
-        self.assertEqual(r_kv.r_get_all(), {STATE_KEY: test})
+        self.assertEqual(r_kv.r_get_all(), {kvdata.KEY_PRESENCE: test})
         self.assertTrue(ch)
         r_kv.r_clear()
 
@@ -237,7 +237,7 @@ class TestStorPoolService(unittest.TestCase):
 
         ch = testee.update_state(r_kv, test, False, 'a', 'aa', False)
         self.assertEqual(test, st_false)
-        self.assertEqual(r_kv.r_get_all(), {STATE_KEY: test})
+        self.assertEqual(r_kv.r_get_all(), {kvdata.KEY_PRESENCE: test})
         self.assertTrue(ch)
         r_kv.r_clear()
 
@@ -263,14 +263,14 @@ class TestStorPoolService(unittest.TestCase):
 
         # Now let's see if it has filled in the database...
         self.assertEqual({
-            STATE_KEY: {
+            kvdata.KEY_PRESENCE: {
                 '-local': {
                     node_name: '13',
                 },
             },
         }, r_kv.r_get_all())
 
-        jdata = json.dumps(r_kv.get(STATE_KEY)['-local'])
+        jdata = json.dumps(r_kv.get(kvdata.KEY_PRESENCE)['-local'])
         self.assertEqual(rel_data_received,
                          list(map(lambda rid: [rid, jdata], rels)))
 
@@ -284,7 +284,7 @@ class TestStorPoolService(unittest.TestCase):
         another_name = 'newer-node'
         testee.add_present_node(another_name, '32', 'peer-relation')
         self.assertEqual({
-            STATE_KEY: {
+            kvdata.KEY_PRESENCE: {
                 '-local': {
                     node_name: '13',
                     another_name: '32',
@@ -292,6 +292,6 @@ class TestStorPoolService(unittest.TestCase):
             },
         }, r_kv.r_get_all())
 
-        jdata = json.dumps(r_kv.get(STATE_KEY)['-local'])
+        jdata = json.dumps(r_kv.get(kvdata.KEY_PRESENCE)['-local'])
         self.assertEqual(rel_data_received,
                          list(map(lambda rid: [rid, jdata], rels)))

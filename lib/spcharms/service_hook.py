@@ -9,6 +9,8 @@ from charms.reactive import helpers
 
 from charmhelpers.core import hookenv, unitdata
 
+from spcharms import kvdata
+
 
 def init_state():
     """
@@ -23,7 +25,7 @@ def get_state(db=None):
     """
     if db is None:
         db = unitdata.kv()
-    state = db.get('storpool-service.state', default=None)
+    state = db.get(kvdata.KEY_PRESENCE, default=None)
     if state is None:
         state = init_state()
         changed = True
@@ -36,7 +38,7 @@ def set_state(db, state):
     """
     Cache the current presence state in the unit's persistent storage.
     """
-    db.set('storpool-service.state', state)
+    db.set(kvdata.KEY_PRESENCE, state)
 
 
 def update_state(db, state, changed, key, name, value):
@@ -128,7 +130,7 @@ def handle(hk, attaching, data, rdebug=lambda s: s):
     if changed:
         rdebug('- updated state: {state}'.format(state=state))
 
-    if changed or helpers.data_changed('storpool-service.state', state) or \
+    if changed or helpers.data_changed(kvdata.KEY_PRESENCE, state) or \
        not helpers.is_state('storpool-service.changed'):
         rdebug('- something changed, notifying whomever should care')
         reactive.set_state('storpool-service.change')

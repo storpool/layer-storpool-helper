@@ -9,6 +9,7 @@ import time
 from charmhelpers.core import hookenv, unitdata
 
 from spcharms import config as spconfig
+from spcharms import kvdata
 from spcharms import status as spstatus
 
 rdebug_node = platform.node()
@@ -115,7 +116,7 @@ def get_machine_id():
     the environment settings are not as expected.
     """
     kv = unitdata.kv()
-    val = kv.get('storpool-helper.machine-id', None)
+    val = kv.get(kvdata.KEY_MACHINE_ID, None)
     if val is None:
         env = hookenv.execution_environment()
         if 'env' not in env:
@@ -128,7 +129,7 @@ def get_machine_id():
             val = ''
         else:
             val = env['env']['JUJU_MACHINE_ID']
-        kv.set('storpool-helper.machine-id', val)
+        kv.set(kvdata.KEY_MACHINE_ID, val)
 
     return None if val == '' else val
 
@@ -139,7 +140,7 @@ def get_parent_node():
     we are running on or above.
     """
     kv = unitdata.kv()
-    val = kv.get('storpool-helper.parent-node-id', None)
+    val = kv.get(kvdata.KEY_PARENT_NODE_ID, None)
     if val is None:
         sp_node = get_machine_id()
         parts = sp_node.split('/')
@@ -151,7 +152,7 @@ def get_parent_node():
             err('Could not parse the Juju node name "{node}"'
                 .format(node=sp_node))
             val = ''
-        kv.set('storpool-helper.parent-node-id', val)
+        kv.set(kvdata.KEY_PARENT_NODE_ID, val)
 
     return None if val == '' else val
 
