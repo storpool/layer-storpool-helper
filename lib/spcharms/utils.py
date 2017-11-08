@@ -153,3 +153,14 @@ def get_parent_node():
         kv.set('storpool-helper.parent-node-id', val)
 
     return None if val == '' else val
+
+
+def exec(cmd):
+    """
+    Run an external command and return both its exit code and
+    its output (to the standard output stream only).
+    """
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    output = p.communicate()[0].decode()
+    res = p.returncode
+    return {'res': res, 'out': output}
