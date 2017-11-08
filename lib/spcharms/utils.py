@@ -130,3 +130,26 @@ def get_machine_id():
         kv.set('storpool-helper.machine-id', val)
 
     return None if val == '' else val
+
+
+def get_parent_node():
+    """
+    Figure out the Juju node ID of the bare metal node that
+    we are running on or above.
+    """
+    kv = unitdata.kv()
+    val = kv.get('storpool-helper.parent-node-id', None)
+    if val is None:
+        sp_node = get_machine_id()
+        parts = sp_node.split('/')
+        if len(parts) == 1:
+            val = sp_node
+        elif len(parts) == 3 and parts[1] in ('lxd', 'kvm'):
+            val = parts[0]
+        else:
+            err('Could not parse the Juju node name "{node}"'
+                .format(node=sp_node))
+            val = ''
+        kv.set('storpool-helper.parent-node-id', val)
+
+    return None if val == '' else val
