@@ -102,10 +102,12 @@ class MockDB(object):
         self.data = {}
 
 
-r_kv = MockDB()
-
 # Make sure all consumers of unitdata.kv() get our version.
-unitdata.kv = lambda: r_kv
+if 'MockDB' in type(unitdata.kv()).__name__:
+    r_kv = unitdata.kv()
+else:
+    r_kv = MockDB()
+    unitdata.kv = lambda: r_kv
 
 
 from spcharms import kvdata
