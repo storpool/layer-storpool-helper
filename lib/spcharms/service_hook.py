@@ -4,9 +4,6 @@ the same charm so that the state may be reported to other charms.
 """
 import json
 
-from charms import reactive
-from charms.reactive import helpers
-
 from charmhelpers.core import hookenv, unitdata
 
 from spcharms import kvdata
@@ -16,7 +13,7 @@ def init_state():
     """
     Initialize the local state as an empty dictionary.
     """
-    return {'-local': {}}
+    return {}
 
 
 def get_state(db=None):
@@ -58,80 +55,150 @@ def update_state(db, state, changed, key, name, value):
     return changed
 
 
-def add_present_node(name, value, rel_name, rdebug=lambda s: s):
+def add_present_node(service, name, value, rdebug=lambda s: s):
     """
-    Update a peer's state and send the full structure right back if needed.
+    Update a peer's state.
     """
     db = unitdata.kv()
     (state, changed) = get_state(db)
-    changed = update_state(db, state, changed, '-local', name, value)
-    if changed:
-        rdebug('hm, let us then try to fetch the relation ids for {rel_name}'
-               .format(rel_name=rel_name))
-        rel_ids = hookenv.relation_ids(rel_name)
-        rdebug('rel_ids: {rel_ids}'.format(rel_ids=rel_ids))
-        for rel_id in rel_ids:
-            rdebug('- trying for {rel_id}'.format(rel_id=rel_id))
-            hookenv.relation_set(rel_id,
-                                 storpool_service=json.dumps(state['-local']))
-            rdebug('  - looks like we managed it for {rel_id}'
-                   .format(rel_id=rel_id))
-        rdebug('that is it for the rel_ids')
+    return update_state(db, state, changed, service, name, value)
 
 
-def get_present_nodes():
+def get_present_nodes(service):
     """
     Fetch the current state of the charm's units.
     """
     (state, _) = get_state()
-    res = {}
-    for arr in state.values():
-        for (key, value) in arr.items():
-            res[key] = value or res.get(key, False)
-    return res
+    return state.get(service, {})
 
 
-def handle(hk, attaching, data, rdebug=lambda s: s):
+def handle(data, rdebug=lambda s: s):
     """
     Handle a state change of the internal hook; update our state if needed.
     """
-    rdebug('service_hook.handle for a {t} hook {name}, attaching {attaching}, '
-           'data keys {ks}'
-           .format(t=type(hk).__name__,
-                   name=hk.relation_name,
-                   attaching=attaching,
-                   ks=sorted(data.keys()) if data is not None else None))
+    rdebug('service_hook.handle {ks}'.format(ks=sorted(data.keys())))
     db = unitdata.kv()
     (state, changed) = get_state(db)
     rdebug('- current state: {state}'.format(state=state))
     rdebug('- changed even at the start: {changed}'.format(changed=changed))
 
-    key = hk.conversation().key
-    rdebug('- conversation key: {key}'.format(key=key))
-    if attaching:
-        rdebug('- attaching: adding new hosts as reported')
-        for (name, value) in data.items():
-            rdebug('  - processing name "{name}" value "{value}"'
-                   .format(name=name, value=value))
-            if update_state(db, state, changed, key, name, value):
+    # TODO: handle detaching in an entirely different way
+    for (svc, sdata) in data.items():
+        for (name, value) in sdata.items():
+            if update_state(db, state, changed, svc, name, value):
+                rdebug('- changed: service "{svc}" name "{name}" '
+                       'value "{value}"'
+                       .format(svc=svc, name=name, value=value))
                 changed = True
-            rdebug('    - changed: {changed}'.format(changed=changed))
-    else:
-        if key in state:
-            rdebug('- detaching: the conversation has been recorded, '
-                   'removing it')
-            del state[key]
-            changed = True
-            set_state(db, state)
-        else:
-            rdebug('- detaching, but we had no idea we were having '
-                   'this conversation, so nah')
 
     if changed:
         rdebug('- updated state: {state}'.format(state=state))
-
-    if changed or helpers.data_changed(kvdata.KEY_PRESENCE, state) or \
-       not helpers.is_state('storpool-service.changed'):
-        rdebug('- something changed, notifying whomever should care')
-        reactive.set_state('storpool-service.change')
     return changed
+
+
+def get_remote_presence():
+    """
+    Get the presence data sent down a storpool-service/presence interface.
+    """
+    conf = unitdata.kv().get(kvdata.KEY_REMOTE_PRESENCE)
+    presence = conf.get('presence')
+    if presence is None:
+        return None
+    elif presence.get('version') != '1.0':
+        raise Exception('Internal error: presence data with weird version')
+    elif 'data' not in presence:
+        raise Exception('Internal error: presence data with no, uhm, data')
+    return presence['data']
+
+
+def import_presence(presence):
+    """
+    Parse the presence data sent down a storpool-service/presence interface.
+    """
+    if 'version' not in presence:
+        raise Exception('Internal error: presence data with no version')
+    elif not presence['version'].startswith('1.'):
+        raise Exception('Internal error: presence data with weird version')
+    elif 'data' not in presence:
+        raise Exception('Internal error: presence data with no, mm, data')
+
+    # Future version checks and reformatting go here
+    return {
+        **presence,
+        'version': '1.0',
+    }
+
+
+def handle_remote_presence(hk, rdebug=lambda s: s):
+    hk.set_state('{relation_name}.notify')
+    conv = hk.conversation()
+    spconf = conv.get_remote('storpool_presence')
+    if spconf is None:
+        rdebug('no presence data yet')
+        return
+
+    oldconf = unitdata.kv().get(kvdata.KEY_REMOTE_PRESENCE_STR)
+    if spconf == oldconf:
+        rdebug('nothing changed')
+        return
+
+    rdebug('whee, we got something new from the {key} conversation, '
+           'trying to deserialize it'.format(key=conv.key))
+    try:
+        conf = json.loads(spconf)
+        rdebug('got something: type {t}, dict keys: {k}'
+               .format(t=type(conf).__name__,
+                       k=sorted(conf.keys()) if isinstance(conf, dict)
+                       else []))
+        if not isinstance(conf, dict):
+            rdebug('well, it is not a dictionary, is it?')
+            return
+        presence = conf.get('presence', None)
+        if not isinstance(presence, dict):
+            rdebug('no presence data, just {keys}'
+                   .format(keys=','.join(sorted(conf.keys()))))
+            return
+        presence_version = presence.get('version')
+        if presence_version is None:
+            rdebug('no presence data version, ignoring')
+            return
+        elif not presence_version.startswith('1.'):
+            rdebug('unsupported presence data version {ver}, ignoring'
+                   .format(ver=presence_version))
+            return
+        elif 'data' not in presence:
+            rdebug('invalid presence data format: no "data" member')
+            return
+        rdebug('configured services: {svcs}'
+               .format(svcs=','.join(sorted(presence.keys()))))
+        rdebug('configured block nodes: {nodes}'
+               .format(nodes=','
+                       .join(sorted(presence.get('block',
+                                                 {}).keys()))))
+
+        unitdata.kv().set(kvdata.KEY_REMOTE_PRESENCE_STR, spconf)
+        conf['presence'] = import_presence(conf['presence'])
+        unitdata.kv().set(kvdata.KEY_REMOTE_PRESENCE, conf)
+        hk.set_state('{relation_name}.changed')
+
+    except Exception as e:
+        rdebug('oof, could not parse the presence data passed down '
+               'the hook: {e}'.format(e=e))
+
+
+def send_presence_data(rel_name, ext_data={}, rdebug=lambda s: s):
+    rdebug('sending presence data along the {name} hook'.format(name=rel_name))
+    data = json.dumps({
+        **ext_data,
+        'presence': {
+            'version': '1.0',
+            'data': dict(get_state()[0]),
+        },
+    })
+    rel_ids = hookenv.relation_ids(rel_name)
+    rdebug('- got rel_ids {rel_ids}'.format(rel_ids=rel_ids))
+    for rel_id in rel_ids:
+        rdebug('  - trying for {rel_id}'.format(rel_id=rel_id))
+        hookenv.relation_set(rel_id, storpool_presence=data)
+        rdebug('  - done with {rel_id}'.format(rel_id=rel_ids))
+    rdebug('- done with the rel_ids')

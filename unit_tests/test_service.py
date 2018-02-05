@@ -116,7 +116,6 @@ from spcharms import service_hook as testee
 SP_NODE = '42'
 
 STATE_NONE = {
-    '-local': {},
 }
 
 
@@ -153,15 +152,15 @@ class TestStorPoolService(unittest.TestCase):
         e_kv = MockDB()
 
         (state_r, ch_t) = testee.get_state()
-        self.assertEqual(set(state_r['-local'].keys()), set())
+        self.assertEqual(set(state_r.keys()), set())
         self.assertTrue(ch_t)
 
         (state_b, ch_t) = testee.get_state(b_kv)
-        self.assertEqual(set(state_b['-local'].keys()), set())
+        self.assertEqual(set(state_b.keys()), set())
         self.assertTrue(ch_t)
 
         (state_e, ch_t) = testee.get_state(e_kv)
-        self.assertEqual(list(state_e['-local'].keys()), [])
+        self.assertEqual(list(state_e.keys()), [])
         self.assertTrue(ch_t)
 
         r_kv.set(kvdata.KEY_PRESENCE, state_b)
@@ -261,18 +260,18 @@ class TestStorPoolService(unittest.TestCase):
         # Start with an empty database, this is supposed to fill out
         # the information about our node, too.
         node_name = 'new-node'
-        testee.add_present_node(node_name, '13', 'peer-relation')
+        testee.add_present_node('here', node_name, '13', 'peer-relation')
 
         # Now let's see if it has filled in the database...
         self.assertEqual({
             kvdata.KEY_PRESENCE: {
-                '-local': {
+                'here': {
                     node_name: '13',
                 },
             },
         }, r_kv.r_get_all())
 
-        jdata = json.dumps(r_kv.get(kvdata.KEY_PRESENCE)['-local'])
+        jdata = json.dumps(r_kv.get(kvdata.KEY_PRESENCE))
         self.assertEqual(rel_data_received,
                          list(map(lambda rid: [rid, jdata], rels)))
 
@@ -284,16 +283,18 @@ class TestStorPoolService(unittest.TestCase):
         # OK, let's see what happens if another node comes up
         rel_data_received = []
         another_name = 'newer-node'
-        testee.add_present_node(another_name, '32', 'peer-relation')
+        testee.add_present_node('there', another_name, '32', 'peer-relation')
         self.assertEqual({
             kvdata.KEY_PRESENCE: {
-                '-local': {
+                'here': {
                     node_name: '13',
+                },
+                'there': {
                     another_name: '32',
                 },
             },
         }, r_kv.r_get_all())
 
-        jdata = json.dumps(r_kv.get(kvdata.KEY_PRESENCE)['-local'])
+        jdata = json.dumps(r_kv.get(kvdata.KEY_PRESENCE))
         self.assertEqual(rel_data_received,
                          list(map(lambda rid: [rid, jdata], rels)))

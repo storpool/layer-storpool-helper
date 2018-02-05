@@ -13,5 +13,7 @@ KEY_META_CONFIG = 'storpool-helper.meta-config'
 KEY_LXD_NAME = 'storpool-openstack-integration.lxd-name'
 
 KEY_PRESENCE = 'storpool-service.state'
+KEY_REMOTE_PRESENCE = 'storpool-presence.state'
+KEY_REMOTE_PRESENCE_STR = 'storpool-presence.str'
 
 KEY_SPSTATUS = 'storpool-utils.persistent-status'
