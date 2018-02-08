@@ -150,3 +150,13 @@ def set_meta_config(data):
     cached_meta = None
     m()
     reactive.set_state('storpool-helper.config-set')
+
+
+def get_cached_meta_config():
+    """
+    Return only whatever was explicity set using set_meta_config().
+    """
+    data = unitdata.kv().get(kvdata.KEY_META_CONFIG, None)
+    if data is None or data == 'None':
+        return None
+    return data
