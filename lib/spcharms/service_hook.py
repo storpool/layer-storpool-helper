@@ -6,6 +6,7 @@ import json
 
 from charmhelpers.core import hookenv, unitdata
 
+from spcharms import config as spconfig
 from spcharms import kvdata
 
 
@@ -111,6 +112,14 @@ def get_remote_presence():
     return presence['data']
 
 
+def get_remote_config():
+    """
+    Get the configuration sent down a storpool-service/presence interface.
+    """
+    conf = unitdata.kv().get(kvdata.KEY_REMOTE_PRESENCE)
+    return conf.get('config')
+
+
 def import_presence(presence):
     """
     Parse the presence data sent down a storpool-service/presence interface.
@@ -188,11 +197,19 @@ def handle_remote_presence(hk, rdebug=lambda s: s):
 
 def send_presence_data(rel_name, ext_data={}, rdebug=lambda s: s):
     rdebug('sending presence data along the {name} hook'.format(name=rel_name))
+    cfg = spconfig.m()
     data = json.dumps({
         **ext_data,
         'presence': {
             'version': '1.0',
             'data': dict(get_state()[0]),
+        },
+        'config': {
+            'storpool_repo_url': cfg.get('storpool_repo_url'),
+            'storpool_version': cfg.get('storpool_version'),
+            'storpool_openstack_version':
+                cfg.get('storpool_openstack_version'),
+            'storpool_conf': cfg.get('storpool_conf'),
         },
     })
     rel_ids = hookenv.relation_ids(rel_name)
