@@ -138,17 +138,30 @@ def import_presence(presence):
     }
 
 
+def merge_hashes(current, new):
+    """
+    Update hashes recursively and report whether anything changed.
+    """
+    changed = False
+    for (k, v) in new.items():
+        if k not in current or not isinstance(current[k], type(new[k])):
+            current[k] = new[k]
+            changed = True
+        elif isinstance(current[k], dict):
+            if merge_hashes(current[k], new[k]):
+                changed = True
+        elif current[k] != new[k]:
+            current[k] = new[k]
+            changed = True
+    return changed
+
+
 def handle_remote_presence(hk, rdebug=lambda s: s):
     hk.set_state('{relation_name}.notify')
     conv = hk.conversation()
     spconf = conv.get_remote('storpool_presence')
     if spconf is None:
         rdebug('no presence data yet')
-        return
-
-    oldconf = unitdata.kv().get(kvdata.KEY_REMOTE_PRESENCE_STR)
-    if spconf == oldconf:
-        rdebug('nothing changed')
         return
 
     rdebug('whee, we got something new from the {key} conversation, '
@@ -185,9 +198,14 @@ def handle_remote_presence(hk, rdebug=lambda s: s):
                        .join(sorted(presence.get('block',
                                                  {}).keys()))))
 
-        unitdata.kv().set(kvdata.KEY_REMOTE_PRESENCE_STR, spconf)
         conf['presence'] = import_presence(conf['presence'])
-        unitdata.kv().set(kvdata.KEY_REMOTE_PRESENCE, conf)
+
+        stored = unitdata.kv().get(kvdata.KEY_REMOTE_PRESENCE, {})
+        changed = merge_hashes(stored, conf)
+        if not changed:
+            rdebug('nothing changed')
+            return
+        unitdata.kv().set(kvdata.KEY_REMOTE_PRESENCE, stored)
         hk.set_state('{relation_name}.changed')
 
     except Exception as e:
