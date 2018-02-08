@@ -30,7 +30,7 @@ class QuasiConfig(object):
         self.override[key] = value
         self.changed_attrs[key] = changed
 
-    def get(self, key, default):
+    def get(self, key, default=None):
         return self.override.get(key, self.config.get(key, default))
 
     def changed(self, key):
