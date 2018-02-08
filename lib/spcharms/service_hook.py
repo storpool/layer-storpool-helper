@@ -102,11 +102,11 @@ def get_remote_presence():
     Get the presence data sent down a storpool-service/presence interface.
     """
     conf = unitdata.kv().get(kvdata.KEY_REMOTE_PRESENCE)
+    if conf.get('version') != '1.0':
+        raise Exception('Internal error: presence data with weird version')
     presence = conf.get('presence')
     if presence is None:
         return None
-    elif presence.get('version') != '1.0':
-        raise Exception('Internal error: presence data with weird version')
     elif 'data' not in presence:
         raise Exception('Internal error: presence data with no, uhm, data')
     return presence['data']
@@ -120,20 +120,22 @@ def get_remote_config():
     return conf.get('config')
 
 
-def import_presence(presence):
+def import_presence(conf):
     """
     Parse the presence data sent down a storpool-service/presence interface.
     """
-    if 'version' not in presence:
+    if 'version' not in conf:
         raise Exception('Internal error: presence data with no version')
-    elif not presence['version'].startswith('1.'):
+    elif not conf['version'].startswith('1.'):
         raise Exception('Internal error: presence data with weird version')
-    elif 'data' not in presence:
+    elif 'presence' not in conf or 'data' not in conf['presence']:
         raise Exception('Internal error: presence data with no, mm, data')
+    elif 'config' not in conf:
+        raise Exception('Internal error: presence data with no config')
 
     # Future version checks and reformatting go here
     return {
-        **presence,
+        **conf,
         'version': '1.0',
     }
 
@@ -175,12 +177,7 @@ def handle_remote_presence(hk, rdebug=lambda s: s):
         if not isinstance(conf, dict):
             rdebug('well, it is not a dictionary, is it?')
             return
-        presence = conf.get('presence', None)
-        if not isinstance(presence, dict):
-            rdebug('no presence data, just {keys}'
-                   .format(keys=','.join(sorted(conf.keys()))))
-            return
-        presence_version = presence.get('version')
+        presence_version = conf.get('version')
         if presence_version is None:
             rdebug('no presence data version, ignoring')
             return
@@ -188,17 +185,20 @@ def handle_remote_presence(hk, rdebug=lambda s: s):
             rdebug('unsupported presence data version {ver}, ignoring'
                    .format(ver=presence_version))
             return
+        presence = conf.get('presence')
+        if not isinstance(presence, dict):
+            rdebug('no presence data, just {keys}'
+                   .format(keys=','.join(sorted(conf.keys()))))
+            return
         elif 'data' not in presence:
             rdebug('invalid presence data format: no "data" member')
             return
-        rdebug('configured services: {svcs}'
-               .format(svcs=','.join(sorted(presence.keys()))))
-        rdebug('configured block nodes: {nodes}'
-               .format(nodes=','
-                       .join(sorted(presence.get('block',
-                                                 {}).keys()))))
+        if not isinstance(conf.get('config'), dict):
+            rdebug('no config data, just {keys'
+                   .format(keys=','.join(sorted(conf.keys()))))
+            return
 
-        conf['presence'] = import_presence(conf['presence'])
+        conf = import_presence(conf)
 
         stored = unitdata.kv().get(kvdata.KEY_REMOTE_PRESENCE, {})
         changed = merge_hashes(stored, conf)
@@ -218,8 +218,8 @@ def send_presence_data(rel_name, ext_data={}, rdebug=lambda s: s):
     cfg = spconfig.m()
     data = json.dumps({
         **ext_data,
+        'version': '1.0',
         'presence': {
-            'version': '1.0',
             'data': dict(get_state()[0]),
         },
         'config': {
