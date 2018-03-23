@@ -9,7 +9,6 @@ import sys
 import unittest
 
 import copy
-import json
 import mock
 
 from charmhelpers.core import unitdata
@@ -242,25 +241,17 @@ class TestStorPoolService(unittest.TestCase):
         self.assertTrue(ch)
         r_kv.r_clear()
 
-    @mock.patch('charmhelpers.core.hookenv.relation_set')
-    @mock.patch('charmhelpers.core.hookenv.relation_ids')
-    def test_add_present_node(self, rel_ids, rel_set):
+    def test_add_present_node(self):
         """
         Test the add_present_node() method, used for announcing to
         the world that a node (might be us, might be a container near us,
         might be another peer entirely) is up.
         """
 
-        rel_data_received = []
-        rels = ['peer-rel/1', 'peer-rel/42']
-        rel_ids.return_value = rels
-        rel_set.side_effect = lambda rid, storpool_service: \
-            rel_data_received.append([rid, storpool_service])
-
         # Start with an empty database, this is supposed to fill out
         # the information about our node, too.
         node_name = 'new-node'
-        testee.add_present_node('here', node_name, '13', 'peer-relation')
+        testee.add_present_node('here', node_name, '13')
 
         # Now let's see if it has filled in the database...
         self.assertEqual({
@@ -271,19 +262,8 @@ class TestStorPoolService(unittest.TestCase):
             },
         }, r_kv.r_get_all())
 
-        jdata = json.dumps(r_kv.get(kvdata.KEY_PRESENCE))
-        self.assertEqual(rel_data_received,
-                         list(map(lambda rid: [rid, jdata], rels)))
-
-        # Change the relation IDs to ferret out anything that may
-        # have cached them...
-        rels = ['another-relation', 'and-another-one']
-        rel_ids.return_value = rels
-
-        # OK, let's see what happens if another node comes up
-        rel_data_received = []
         another_name = 'newer-node'
-        testee.add_present_node('there', another_name, '32', 'peer-relation')
+        testee.add_present_node('there', another_name, '32')
         self.assertEqual({
             kvdata.KEY_PRESENCE: {
                 'here': {
@@ -294,7 +274,3 @@ class TestStorPoolService(unittest.TestCase):
                 },
             },
         }, r_kv.r_get_all())
-
-        jdata = json.dumps(r_kv.get(kvdata.KEY_PRESENCE))
-        self.assertEqual(rel_data_received,
-                         list(map(lambda rid: [rid, jdata], rels)))
