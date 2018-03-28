@@ -78,8 +78,7 @@ def pkgs_to_install(requested, policy):
                     None)
 
         req = requested[p]
-        if ver['installed'] is not None and \
-           (req == '*' or req == ver['installed']):
+        if ver['installed'] is not None and req == ver['installed']:
             continue
         elif ver['candidate'] is None:
             return ('the {pkg} package is not available in the repositories, '
@@ -90,6 +89,8 @@ def pkgs_to_install(requested, policy):
                     'in the repositories, we have {cand} instead'
                     .format(req=req, pkg=p, cand=ver['candidate']),
                     None)
+        elif ver['candidate'] == ver['installed']:
+            continue
 
         to_install.append(p)
 
