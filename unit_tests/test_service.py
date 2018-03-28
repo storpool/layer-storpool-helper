@@ -9,7 +9,6 @@ import sys
 import unittest
 
 import copy
-import json
 import mock
 
 from charmhelpers.core import unitdata
@@ -116,7 +115,6 @@ from spcharms import service_hook as testee
 SP_NODE = '42'
 
 STATE_NONE = {
-    '-local': {},
 }
 
 
@@ -153,15 +151,15 @@ class TestStorPoolService(unittest.TestCase):
         e_kv = MockDB()
 
         (state_r, ch_t) = testee.get_state()
-        self.assertEqual(set(state_r['-local'].keys()), set())
+        self.assertEqual(set(state_r.keys()), set())
         self.assertTrue(ch_t)
 
         (state_b, ch_t) = testee.get_state(b_kv)
-        self.assertEqual(set(state_b['-local'].keys()), set())
+        self.assertEqual(set(state_b.keys()), set())
         self.assertTrue(ch_t)
 
         (state_e, ch_t) = testee.get_state(e_kv)
-        self.assertEqual(list(state_e['-local'].keys()), [])
+        self.assertEqual(list(state_e.keys()), [])
         self.assertTrue(ch_t)
 
         r_kv.set(kvdata.KEY_PRESENCE, state_b)
@@ -243,57 +241,36 @@ class TestStorPoolService(unittest.TestCase):
         self.assertTrue(ch)
         r_kv.r_clear()
 
-    @mock.patch('charmhelpers.core.hookenv.relation_set')
-    @mock.patch('charmhelpers.core.hookenv.relation_ids')
-    def test_add_present_node(self, rel_ids, rel_set):
+    def test_add_present_node(self):
         """
         Test the add_present_node() method, used for announcing to
         the world that a node (might be us, might be a container near us,
         might be another peer entirely) is up.
         """
 
-        rel_data_received = []
-        rels = ['peer-rel/1', 'peer-rel/42']
-        rel_ids.return_value = rels
-        rel_set.side_effect = lambda rid, storpool_service: \
-            rel_data_received.append([rid, storpool_service])
-
         # Start with an empty database, this is supposed to fill out
         # the information about our node, too.
         node_name = 'new-node'
-        testee.add_present_node(node_name, '13', 'peer-relation')
+        testee.add_present_node('here', node_name, '13')
 
         # Now let's see if it has filled in the database...
         self.assertEqual({
             kvdata.KEY_PRESENCE: {
-                '-local': {
+                'here': {
                     node_name: '13',
                 },
             },
         }, r_kv.r_get_all())
 
-        jdata = json.dumps(r_kv.get(kvdata.KEY_PRESENCE)['-local'])
-        self.assertEqual(rel_data_received,
-                         list(map(lambda rid: [rid, jdata], rels)))
-
-        # Change the relation IDs to ferret out anything that may
-        # have cached them...
-        rels = ['another-relation', 'and-another-one']
-        rel_ids.return_value = rels
-
-        # OK, let's see what happens if another node comes up
-        rel_data_received = []
         another_name = 'newer-node'
-        testee.add_present_node(another_name, '32', 'peer-relation')
+        testee.add_present_node('there', another_name, '32')
         self.assertEqual({
             kvdata.KEY_PRESENCE: {
-                '-local': {
+                'here': {
                     node_name: '13',
+                },
+                'there': {
                     another_name: '32',
                 },
             },
         }, r_kv.r_get_all())
-
-        jdata = json.dumps(r_kv.get(kvdata.KEY_PRESENCE)['-local'])
-        self.assertEqual(rel_data_received,
-                         list(map(lambda rid: [rid, jdata], rels)))
